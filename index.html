@@ -1,0 +1,1757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VIBE — What's your vibe?</title>
+  <style>
+:root {
+  --bg: #0f1420;
+  --surface: #171d2b;
+  --surface-2: #1f2738;
+  --line: #2b3650;
+  --text: #e7ecf5;
+  --muted: #9aa6be;
+  --accent: #7c5cff;
+  --accent-soft: #2a2350;
+  --good: #4ad6a6;
+  --radius: 14px;
+  --maxw: 720px;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+  min-height: 100vh;
+}
+
+.screen { animation: fade 0.25s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Intro */
+.intro h1 {
+  font-size: 3.4rem;
+  margin: 0 0 2px;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+}
+.intro .tagline {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 14px;
+}
+.acronym {
+  font-size: 0.9rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  margin: 0 0 22px;
+}
+.acronym span {
+  color: var(--accent);
+  font-weight: 700;
+}
+.intro .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 24px; }
+.intro ul { color: var(--muted); padding-left: 18px; margin: 0 0 28px; }
+.intro li { margin-bottom: 8px; }
+.intro li strong { color: var(--text); }
+
+/* Buttons */
+.btn {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 10px;
+  padding: 14px 22px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: translateY(1px); }
+.btn.secondary {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+.btn.secondary:hover { color: var(--text); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Progress */
+.progress { margin-bottom: 24px; }
+.progress-bar {
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.arm-tag {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+/* Question */
+.question h2 {
+  font-size: 1.35rem;
+  margin: 8px 0 22px;
+  letter-spacing: -0.01em;
+}
+.options { display: grid; gap: 10px; }
+.option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.option:hover { border-color: var(--accent); background: var(--surface-2); }
+.option.selected { border-color: var(--accent); background: var(--accent-soft); }
+
+.nav { display: flex; justify-content: space-between; margin-top: 26px; }
+
+/* Channel cue + Likert (deep / confirmation rounds) */
+.statement {
+  font-size: 1.35rem;
+  line-height: 1.4;
+  margin: 4px 0 26px;
+  letter-spacing: -0.01em;
+}
+.channel-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.flow-arrow {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.likert { margin-top: 8px; }
+.likert-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.likert-scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.dot {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 1.05rem;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.dot:hover { border-color: var(--accent); color: var(--text); }
+.dot.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Result */
+.result .eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+.result h1 { font-size: 2.4rem; margin: 0 0 14px; letter-spacing: -0.02em; }
+.result h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin: 28px 0 12px;
+}
+.confidence {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+
+/* Two channels, two separate bars (never summed) */
+.reads { display: grid; gap: 16px; }
+.channel-read { display: grid; gap: 8px; }
+.channel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.channel-label { font-weight: 600; }
+.channel-sub { color: var(--muted); font-size: 0.85rem; }
+.score-bar {
+  height: 10px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.score-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+/* Constellation */
+.constellation { display: grid; gap: 8px; }
+.con-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.con-rel { display: flex; flex-direction: column; }
+.con-name { font-weight: 600; }
+.con-sub { color: var(--muted); font-size: 0.82rem; }
+.con-tag {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* Optional full read */
+.full-toggle { margin-top: 22px; }
+.full-read { margin-top: 14px; }
+table.scores { width: 100%; border-collapse: collapse; }
+table.scores th, table.scores td {
+  text-align: right;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+table.scores th { color: var(--muted); font-weight: 600; font-size: 0.82rem; }
+table.scores td:first-child, table.scores th:first-child { text-align: left; }
+table.scores tr.is-primary td { color: var(--text); font-weight: 700; }
+table.scores tr.is-primary td:first-child { color: var(--accent); }
+.note { font-size: 0.82rem; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+
+.result-tagline {
+  margin: 30px 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.footer-actions { margin-top: 16px; display: flex; gap: 12px; }
+
+/* Reserved space for a future watermark (F-with-a-star). Empty for the beta. */
+.watermark {
+  position: fixed;
+  right: 18px;
+  bottom: 16px;
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+}
+
+@media (max-width: 480px) {
+  .intro h1 { font-size: 2.8rem; }
+  .result h1 { font-size: 1.9rem; }
+  .question h2 { font-size: 1.15rem; }
+  .statement { font-size: 1.15rem; }
+  .likert-scale { gap: 7px; }
+  .dot { font-size: 0.95rem; border-radius: 10px; }
+}
+
+</style>
+</head>
+<body>
+  <main id="app" class="app"></main>
+  <!-- Reserved for a watermark (F-with-a-star) in a later release. Intentionally empty for the white-label beta. -->
+  <div id="watermark" class="watermark" aria-hidden="true"></div>
+  <script>
+// AUTO-GENERATED from source/VIBE_Quiz_Full_Bank.xlsx by source/generate_data.py.
+// Do not edit by hand. Regenerate after changing the workbook.
+window.QUIZ_DATA = {
+  "title": "VIBE",
+  "wheel": [
+    "Whisperer",
+    "Tracker",
+    "Pioneer",
+    "Yodeler",
+    "Ringleader",
+    "Sherpa",
+    "Ranger",
+    "Quartermaster",
+    "Cartographer",
+    "Mountaineer"
+  ],
+  "sweep": [
+    {
+      "id": "S1",
+      "question": "Free evening, nothing owed to anyone. What are you reaching for?",
+      "options": [
+        {
+          "text": "A quiet night to yourself, phone off",
+          "type": "Whisperer"
+        },
+        {
+          "text": "Somewhere new you have not been yet",
+          "type": "Tracker"
+        },
+        {
+          "text": "A room full of people and a bit of noise",
+          "type": "Ringleader"
+        },
+        {
+          "text": "Getting a job finally finished",
+          "type": "Sherpa"
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "question": "What kind of day leaves you buzzing rather than drained?",
+      "options": [
+        {
+          "text": "One where you dreamed up something that could be big",
+          "type": "Pioneer"
+        },
+        {
+          "text": "One full of great, deep conversation",
+          "type": "Yodeler"
+        },
+        {
+          "text": "A day on home ground, out in nature",
+          "type": "Ranger"
+        },
+        {
+          "text": "One where you cracked how something works",
+          "type": "Cartographer"
+        }
+      ]
+    },
+    {
+      "id": "S3",
+      "question": "Group project, nobody assigned roles. You drift toward...",
+      "options": [
+        {
+          "text": "Sketching the big picture of what we could do",
+          "type": "Pioneer"
+        },
+        {
+          "text": "Reading the room and calling the next move",
+          "type": "Tracker"
+        },
+        {
+          "text": "Doing the actual work and carrying the load",
+          "type": "Sherpa"
+        },
+        {
+          "text": "Sorting logistics so everyone is covered",
+          "type": "Quartermaster"
+        }
+      ]
+    },
+    {
+      "id": "S4",
+      "question": "What do people most often come to you for?",
+      "options": [
+        {
+          "text": "A quiet insight everyone else missed",
+          "type": "Whisperer"
+        },
+        {
+          "text": "Putting the thing into clear words",
+          "type": "Yodeler"
+        },
+        {
+          "text": "Keeping everyone grounded and steady",
+          "type": "Ranger"
+        },
+        {
+          "text": "Building the system that actually works",
+          "type": "Cartographer"
+        }
+      ]
+    },
+    {
+      "id": "S5",
+      "question": "Which sounds most like real rest to you?",
+      "options": [
+        {
+          "text": "Quiet on your own, going inward",
+          "type": "Whisperer"
+        },
+        {
+          "text": "Out exploring something new",
+          "type": "Tracker"
+        },
+        {
+          "text": "A big climb that clears your head",
+          "type": "Mountaineer"
+        }
+      ]
+    },
+    {
+      "id": "S6",
+      "question": "When you step up, what does it tend to look like?",
+      "options": [
+        {
+          "text": "Bringing the room together",
+          "type": "Ringleader"
+        },
+        {
+          "text": "Carrying the load and delivering",
+          "type": "Sherpa"
+        },
+        {
+          "text": "Connecting the right people and pieces",
+          "type": "Quartermaster"
+        },
+        {
+          "text": "Pushing through to get everyone higher",
+          "type": "Mountaineer"
+        }
+      ]
+    },
+    {
+      "id": "S7",
+      "question": "What do you crave when your tank is empty?",
+      "options": [
+        {
+          "text": "Stillness and no input at all",
+          "type": "Whisperer"
+        },
+        {
+          "text": "A cause that actually matters",
+          "type": "Pioneer"
+        },
+        {
+          "text": "A clear plan and some order",
+          "type": "Cartographer"
+        }
+      ]
+    },
+    {
+      "id": "S8",
+      "question": "Weekend totally open. The version of you that comes alive is...",
+      "options": [
+        {
+          "text": "The one exploring somewhere unfamiliar",
+          "type": "Tracker"
+        },
+        {
+          "text": "The one hosting and gathering everyone",
+          "type": "Ringleader"
+        },
+        {
+          "text": "The one tending the patch you love",
+          "type": "Ranger"
+        },
+        {
+          "text": "The one building or fixing something hands-on",
+          "type": "Sherpa"
+        }
+      ]
+    },
+    {
+      "id": "S9",
+      "question": "What is your trademark contribution to a team?",
+      "options": [
+        {
+          "text": "Vision and belief",
+          "type": "Pioneer"
+        },
+        {
+          "text": "A message that lands and rallies people",
+          "type": "Yodeler"
+        },
+        {
+          "text": "Grit and delivery",
+          "type": "Sherpa"
+        },
+        {
+          "text": "Structure and order",
+          "type": "Cartographer"
+        }
+      ]
+    },
+    {
+      "id": "S10",
+      "question": "What pulls your energy back up?",
+      "options": [
+        {
+          "text": "Reading the early signs of what is next",
+          "type": "Tracker"
+        },
+        {
+          "text": "People and warmth",
+          "type": "Ringleader"
+        },
+        {
+          "text": "Connecting pieces that should meet",
+          "type": "Quartermaster"
+        },
+        {
+          "text": "A reset that gets you above it all",
+          "type": "Mountaineer"
+        }
+      ]
+    },
+    {
+      "id": "S11",
+      "question": "What do you tend to leave behind after you have been involved?",
+      "options": [
+        {
+          "text": "People who feel seen and connected",
+          "type": "Ringleader"
+        },
+        {
+          "text": "A place left more grounded and in order",
+          "type": "Ranger"
+        },
+        {
+          "text": "A clearer picture of where to go",
+          "type": "Pioneer"
+        },
+        {
+          "text": "A tighter system than you found",
+          "type": "Cartographer"
+        }
+      ]
+    },
+    {
+      "id": "S12",
+      "question": "Which is most you when it really counts?",
+      "options": [
+        {
+          "text": "First to scout ahead and read the ground",
+          "type": "Tracker"
+        },
+        {
+          "text": "First to put it into words",
+          "type": "Yodeler"
+        },
+        {
+          "text": "First to hold the room steady",
+          "type": "Ranger"
+        },
+        {
+          "text": "First to reset and lead the climb",
+          "type": "Mountaineer"
+        }
+      ]
+    }
+  ],
+  "magnet": [
+    {
+      "id": "M01",
+      "type": "Whisperer",
+      "item": "A quiet night on my own does more for me than a night out."
+    },
+    {
+      "id": "M02",
+      "type": "Whisperer",
+      "item": "I need real alone time to recharge, not just a quick breather."
+    },
+    {
+      "id": "M03",
+      "type": "Whisperer",
+      "item": "I pick up on the mood in a room before anyone says a word."
+    },
+    {
+      "id": "M04",
+      "type": "Whisperer",
+      "item": "Too much noise and stimulation wears me out fast."
+    },
+    {
+      "id": "M05",
+      "type": "Whisperer",
+      "item": "I do my best thinking when it is quiet and nobody is talking at me."
+    },
+    {
+      "id": "M06",
+      "type": "Tracker",
+      "item": "Give me somewhere new to explore and I am instantly happy."
+    },
+    {
+      "id": "M07",
+      "type": "Tracker",
+      "item": "I get a buzz from being first to notice a shift coming."
+    },
+    {
+      "id": "M08",
+      "type": "Tracker",
+      "item": "I would rather follow my curiosity down a new path than repeat a known one."
+    },
+    {
+      "id": "M09",
+      "type": "Tracker",
+      "item": "I am drawn to whatever is new and just starting to emerge."
+    },
+    {
+      "id": "M10",
+      "type": "Tracker",
+      "item": "I love reading the early signs of where something is heading."
+    },
+    {
+      "id": "M11",
+      "type": "Pioneer",
+      "item": "Dreaming up what could be lights me up more than tidying what already is."
+    },
+    {
+      "id": "M12",
+      "type": "Pioneer",
+      "item": "I feel most alive chasing a possibility that matters to me."
+    },
+    {
+      "id": "M13",
+      "type": "Pioneer",
+      "item": "A cause I believe in gives me more energy than any reward."
+    },
+    {
+      "id": "M14",
+      "type": "Pioneer",
+      "item": "I get restless when things stay the same for too long."
+    },
+    {
+      "id": "M15",
+      "type": "Pioneer",
+      "item": "I am moved by potential the way other people are moved by facts."
+    },
+    {
+      "id": "M16",
+      "type": "Yodeler",
+      "item": "A good deep conversation can light me up for hours."
+    },
+    {
+      "id": "M17",
+      "type": "Yodeler",
+      "item": "I love kicking ideas around with someone who really thinks."
+    },
+    {
+      "id": "M18",
+      "type": "Yodeler",
+      "item": "Learning something new is one of my favourite ways to recharge."
+    },
+    {
+      "id": "M19",
+      "type": "Yodeler",
+      "item": "A proper debate energises me far more than small talk."
+    },
+    {
+      "id": "M20",
+      "type": "Yodeler",
+      "item": "Podcasts, books and big questions are my idea of a good time."
+    },
+    {
+      "id": "M21",
+      "type": "Ringleader",
+      "item": "Being around people and good energy fills my tank."
+    },
+    {
+      "id": "M22",
+      "type": "Ringleader",
+      "item": "I love being the one who gets everyone together."
+    },
+    {
+      "id": "M23",
+      "type": "Ringleader",
+      "item": "A warm, lively room is where I feel most myself."
+    },
+    {
+      "id": "M24",
+      "type": "Ringleader",
+      "item": "Good company recharges me more than time alone does."
+    },
+    {
+      "id": "M25",
+      "type": "Ringleader",
+      "item": "I light up when there is laughter and people around me."
+    },
+    {
+      "id": "M26",
+      "type": "Sherpa",
+      "item": "I feel best when I have actually got something done."
+    },
+    {
+      "id": "M27",
+      "type": "Sherpa",
+      "item": "Getting stuck into a hands-on task settles me right down."
+    },
+    {
+      "id": "M28",
+      "type": "Sherpa",
+      "item": "I would rather be useful and busy than sitting around."
+    },
+    {
+      "id": "M29",
+      "type": "Sherpa",
+      "item": "Real, visible progress gives me a quiet satisfaction."
+    },
+    {
+      "id": "M30",
+      "type": "Sherpa",
+      "item": "I recharge by working through a job, not by stepping away from it."
+    },
+    {
+      "id": "M31",
+      "type": "Ranger",
+      "item": "Time in nature on familiar ground resets me."
+    },
+    {
+      "id": "M32",
+      "type": "Ranger",
+      "item": "I feel best when I am grounded in a place I know well."
+    },
+    {
+      "id": "M33",
+      "type": "Ranger",
+      "item": "A steady routine in a place I love keeps me level."
+    },
+    {
+      "id": "M34",
+      "type": "Ranger",
+      "item": "Home and my own patch are where I truly refuel."
+    },
+    {
+      "id": "M35",
+      "type": "Ranger",
+      "item": "Being unhurried in one spot does more for me than going somewhere new."
+    },
+    {
+      "id": "M36",
+      "type": "Quartermaster",
+      "item": "Sorting things out so they actually work gives me a real kick."
+    },
+    {
+      "id": "M37",
+      "type": "Quartermaster",
+      "item": "I love being the one who connects the right people and pieces."
+    },
+    {
+      "id": "M38",
+      "type": "Quartermaster",
+      "item": "Making sure everyone has what they need is satisfying to me."
+    },
+    {
+      "id": "M39",
+      "type": "Quartermaster",
+      "item": "I get energy from getting the logistics humming."
+    },
+    {
+      "id": "M40",
+      "type": "Quartermaster",
+      "item": "I feel good being the useful link that holds things together."
+    },
+    {
+      "id": "M41",
+      "type": "Cartographer",
+      "item": "Bringing order to a mess is deeply satisfying to me."
+    },
+    {
+      "id": "M42",
+      "type": "Cartographer",
+      "item": "I love understanding exactly how all the pieces fit together."
+    },
+    {
+      "id": "M43",
+      "type": "Cartographer",
+      "item": "A clean, well-built system gives me a quiet thrill."
+    },
+    {
+      "id": "M44",
+      "type": "Cartographer",
+      "item": "Getting the details right is its own reward for me."
+    },
+    {
+      "id": "M45",
+      "type": "Cartographer",
+      "item": "I recharge by tidying, refining and making things precise."
+    },
+    {
+      "id": "M46",
+      "type": "Mountaineer",
+      "item": "A big challenge to climb is what gets me out of bed."
+    },
+    {
+      "id": "M47",
+      "type": "Mountaineer",
+      "item": "Getting above it all and seeing the bigger picture resets me."
+    },
+    {
+      "id": "M48",
+      "type": "Mountaineer",
+      "item": "I love a clean reset after a rough patch."
+    },
+    {
+      "id": "M49",
+      "type": "Mountaineer",
+      "item": "Pushing through something hard leaves me recharged, not drained."
+    },
+    {
+      "id": "M50",
+      "type": "Mountaineer",
+      "item": "I feel renewed once I have climbed something that tested me."
+    }
+  ],
+  "current": [
+    {
+      "id": "C01",
+      "type": "Whisperer",
+      "item": "People often tell me I notice things they completely missed."
+    },
+    {
+      "id": "C02",
+      "type": "Whisperer",
+      "item": "When I speak up, it is usually to name what no one else is saying."
+    },
+    {
+      "id": "C03",
+      "type": "Whisperer",
+      "item": "I tend to shift a conversation by listening, not talking."
+    },
+    {
+      "id": "C04",
+      "type": "Whisperer",
+      "item": "My contribution is often a quiet insight at the right moment."
+    },
+    {
+      "id": "C05",
+      "type": "Whisperer",
+      "item": "I bring a calm that helps other people settle."
+    },
+    {
+      "id": "C06",
+      "type": "Tracker",
+      "item": "I am usually first to spot the opening or the way through."
+    },
+    {
+      "id": "C07",
+      "type": "Tracker",
+      "item": "People come to me to read a situation and call the next move."
+    },
+    {
+      "id": "C08",
+      "type": "Tracker",
+      "item": "I find the path when everyone else is stuck."
+    },
+    {
+      "id": "C09",
+      "type": "Tracker",
+      "item": "I act on early signals before they are obvious to anyone else."
+    },
+    {
+      "id": "C10",
+      "type": "Tracker",
+      "item": "My move is to scout ahead and bring back what is coming."
+    },
+    {
+      "id": "C11",
+      "type": "Pioneer",
+      "item": "I am the one who gets people excited about what could be."
+    },
+    {
+      "id": "C12",
+      "type": "Pioneer",
+      "item": "When I back something, my belief tends to rub off on others."
+    },
+    {
+      "id": "C13",
+      "type": "Pioneer",
+      "item": "I express myself by championing the possibility I can see."
+    },
+    {
+      "id": "C14",
+      "type": "Pioneer",
+      "item": "People get pulled along by the future I paint."
+    },
+    {
+      "id": "C15",
+      "type": "Pioneer",
+      "item": "My energy comes out as vision and conviction."
+    },
+    {
+      "id": "C16",
+      "type": "Yodeler",
+      "item": "I am good at putting a thing into words people remember."
+    },
+    {
+      "id": "C17",
+      "type": "Yodeler",
+      "item": "When I step up, I rally people with a clear message."
+    },
+    {
+      "id": "C18",
+      "type": "Yodeler",
+      "item": "I express myself best by communicating and explaining."
+    },
+    {
+      "id": "C19",
+      "type": "Yodeler",
+      "item": "People rely on me to say what everyone is feeling."
+    },
+    {
+      "id": "C20",
+      "type": "Yodeler",
+      "item": "My contribution is getting the idea across so it lands."
+    },
+    {
+      "id": "C21",
+      "type": "Ringleader",
+      "item": "I am usually the one who brings people together."
+    },
+    {
+      "id": "C22",
+      "type": "Ringleader",
+      "item": "I lead the energy and the mood of a group."
+    },
+    {
+      "id": "C23",
+      "type": "Ringleader",
+      "item": "When I show up, the room tends to warm up."
+    },
+    {
+      "id": "C24",
+      "type": "Ringleader",
+      "item": "I express myself by connecting people to each other."
+    },
+    {
+      "id": "C25",
+      "type": "Ringleader",
+      "item": "I am at my best hosting and pulling everyone in."
+    },
+    {
+      "id": "C26",
+      "type": "Sherpa",
+      "item": "I am the one who carries the load and gets it done."
+    },
+    {
+      "id": "C27",
+      "type": "Sherpa",
+      "item": "When it counts, I deliver, no fuss."
+    },
+    {
+      "id": "C28",
+      "type": "Sherpa",
+      "item": "I help people actually reach the goal, step by step."
+    },
+    {
+      "id": "C29",
+      "type": "Sherpa",
+      "item": "My contribution is steady, reliable work that gets there."
+    },
+    {
+      "id": "C30",
+      "type": "Sherpa",
+      "item": "People trust me to do the hard yards."
+    },
+    {
+      "id": "C31",
+      "type": "Ranger",
+      "item": "I keep things grounded and steady when others get carried away."
+    },
+    {
+      "id": "C32",
+      "type": "Ranger",
+      "item": "I am the one who holds the space and keeps it calm."
+    },
+    {
+      "id": "C33",
+      "type": "Ranger",
+      "item": "I express myself by tending and maintaining what matters."
+    },
+    {
+      "id": "C34",
+      "type": "Ranger",
+      "item": "People rely on me to read the timing and keep us steady."
+    },
+    {
+      "id": "C35",
+      "type": "Ranger",
+      "item": "My role is usually to keep everyone anchored."
+    },
+    {
+      "id": "C36",
+      "type": "Quartermaster",
+      "item": "I am the one who organises so nothing falls through."
+    },
+    {
+      "id": "C37",
+      "type": "Quartermaster",
+      "item": "I make sure everyone has what they need to get going."
+    },
+    {
+      "id": "C38",
+      "type": "Quartermaster",
+      "item": "I connect the people and resources that should meet."
+    },
+    {
+      "id": "C39",
+      "type": "Quartermaster",
+      "item": "My contribution is the logistics that hold it all together."
+    },
+    {
+      "id": "C40",
+      "type": "Quartermaster",
+      "item": "I coordinate the moving parts behind the scenes."
+    },
+    {
+      "id": "C41",
+      "type": "Cartographer",
+      "item": "I am the one who builds the system everyone else ends up using."
+    },
+    {
+      "id": "C42",
+      "type": "Cartographer",
+      "item": "I bring order and structure to a mess."
+    },
+    {
+      "id": "C43",
+      "type": "Cartographer",
+      "item": "I map out how it should all actually work."
+    },
+    {
+      "id": "C44",
+      "type": "Cartographer",
+      "item": "My contribution is precision and quality."
+    },
+    {
+      "id": "C45",
+      "type": "Cartographer",
+      "item": "People come to me to make the plan tight and clear."
+    },
+    {
+      "id": "C46",
+      "type": "Mountaineer",
+      "item": "I am the one who pushes through when it gets steep."
+    },
+    {
+      "id": "C47",
+      "type": "Mountaineer",
+      "item": "I lead the climb and take people higher."
+    },
+    {
+      "id": "C48",
+      "type": "Mountaineer",
+      "item": "After a setback, I reset and get us moving again."
+    },
+    {
+      "id": "C49",
+      "type": "Mountaineer",
+      "item": "My contribution is resilience when things get hard."
+    },
+    {
+      "id": "C50",
+      "type": "Mountaineer",
+      "item": "People look to me to find the next level."
+    }
+  ],
+  "confirmation": [
+    {
+      "id": "X01",
+      "type": "Whisperer",
+      "item": "I go a bit stir-crazy with too much time on my own.",
+      "reverse": true
+    },
+    {
+      "id": "X02",
+      "type": "Whisperer",
+      "item": "I think out loud and figure things out by talking.",
+      "reverse": true
+    },
+    {
+      "id": "X03",
+      "type": "Whisperer",
+      "item": "A constant buzz of people and noise energises me.",
+      "reverse": true
+    },
+    {
+      "id": "X04",
+      "type": "Tracker",
+      "item": "I would always pick the familiar route over an unknown one.",
+      "reverse": true
+    },
+    {
+      "id": "X05",
+      "type": "Tracker",
+      "item": "New and untested things make me uneasy.",
+      "reverse": true
+    },
+    {
+      "id": "X06",
+      "type": "Tracker",
+      "item": "I prefer to wait for proof rather than act on an early hunch.",
+      "reverse": true
+    },
+    {
+      "id": "X07",
+      "type": "Pioneer",
+      "item": "I am happiest keeping things exactly as they are.",
+      "reverse": true
+    },
+    {
+      "id": "X08",
+      "type": "Pioneer",
+      "item": "Big-picture possibilities leave me cold, I want the concrete.",
+      "reverse": true
+    },
+    {
+      "id": "X09",
+      "type": "Pioneer",
+      "item": "I rarely get pulled along by a vision or a cause.",
+      "reverse": true
+    },
+    {
+      "id": "X10",
+      "type": "Yodeler",
+      "item": "I would rather sit quietly than get into a deep discussion.",
+      "reverse": true
+    },
+    {
+      "id": "X11",
+      "type": "Yodeler",
+      "item": "Explaining and talking things through drains me.",
+      "reverse": true
+    },
+    {
+      "id": "X12",
+      "type": "Yodeler",
+      "item": "Debates and big questions do not interest me much.",
+      "reverse": true
+    },
+    {
+      "id": "X13",
+      "type": "Ringleader",
+      "item": "Hosting and gathering people feels like hard work to me.",
+      "reverse": true
+    },
+    {
+      "id": "X14",
+      "type": "Ringleader",
+      "item": "I would rather hang back than be at the centre of the room.",
+      "reverse": true
+    },
+    {
+      "id": "X15",
+      "type": "Ringleader",
+      "item": "Lively crowds tire me more than they lift me.",
+      "reverse": true
+    },
+    {
+      "id": "X16",
+      "type": "Sherpa",
+      "item": "I would rather plan than get my hands dirty doing the work.",
+      "reverse": true
+    },
+    {
+      "id": "X17",
+      "type": "Sherpa",
+      "item": "Grinding through a long task wears me down quickly.",
+      "reverse": true
+    },
+    {
+      "id": "X18",
+      "type": "Sherpa",
+      "item": "I lose interest once it comes to the actual doing.",
+      "reverse": true
+    },
+    {
+      "id": "X19",
+      "type": "Ranger",
+      "item": "Staying in one place too long makes me restless.",
+      "reverse": true
+    },
+    {
+      "id": "X20",
+      "type": "Ranger",
+      "item": "Routine and familiar ground bore me.",
+      "reverse": true
+    },
+    {
+      "id": "X21",
+      "type": "Ranger",
+      "item": "I barely notice or mind my surroundings.",
+      "reverse": true
+    },
+    {
+      "id": "X22",
+      "type": "Quartermaster",
+      "item": "Logistics and organising leave me cold.",
+      "reverse": true
+    },
+    {
+      "id": "X23",
+      "type": "Quartermaster",
+      "item": "I would rather others handle who needs what.",
+      "reverse": true
+    },
+    {
+      "id": "X24",
+      "type": "Quartermaster",
+      "item": "Coordinating moving parts feels like a chore to me.",
+      "reverse": true
+    },
+    {
+      "id": "X25",
+      "type": "Cartographer",
+      "item": "Detail and order are not really my thing.",
+      "reverse": true
+    },
+    {
+      "id": "X26",
+      "type": "Cartographer",
+      "item": "I would rather wing it than build a system.",
+      "reverse": true
+    },
+    {
+      "id": "X27",
+      "type": "Cartographer",
+      "item": "Tidying and refining bore me quickly.",
+      "reverse": true
+    },
+    {
+      "id": "X28",
+      "type": "Mountaineer",
+      "item": "I would rather avoid a hard challenge than take it on.",
+      "reverse": true
+    },
+    {
+      "id": "X29",
+      "type": "Mountaineer",
+      "item": "Setbacks knock me flat rather than fire me up.",
+      "reverse": true
+    },
+    {
+      "id": "X30",
+      "type": "Mountaineer",
+      "item": "I have no real urge to push for the next level.",
+      "reverse": true
+    }
+  ]
+};
+
+</script>
+  <script>
+// VIBE test — adaptive flow, scoring engine, and constellation read.
+// Reads window.QUIZ_DATA (assets/quiz-data.js, generated from the workbook).
+//
+// Engine rules (from the build brief + corrections):
+//  - Two channels per type: Magnet (charge in) and Current (charge out).
+//    Each normalised 0-100 INDEPENDENTLY. Never summed. Shown as two bars.
+//  - Primary is SEATED BETWEEN the peaks, not the loudest channel:
+//    the Magnet peak is the upstream neighbour (P-1), the Current peak is the
+//    downstream neighbour (P+1), so the Primary is P = (Magnet peak pos) + 1.
+//    Clean read: the Current peak then lands on P+1. If it does not, the read
+//    is flagged "close" (low confidence). No tie-break — seating is unique.
+//  - Constellation by position off the Primary, all ten settled:
+//    upstream P-1, downstream P+1, Echo P+5, Shadow P+4, Eclipse P+6.
+(function () {
+  "use strict";
+
+  var DATA = window.QUIZ_DATA;
+  var app = document.getElementById("app");
+  var WHEEL = DATA.wheel;                 // index 0 = position 1
+  var N = WHEEL.length;                    // 10
+
+  // How many live types the Sweep promotes to the deep round.
+  var CANDIDATE_COUNT = 3;
+  // How many top types get the Confirmation cross-check.
+  var CONFIRM_COUNT = 2;
+
+  // ---- Wheel helpers (positions are 1..N) ----
+  function posOf(type) { return WHEEL.indexOf(type) + 1; }
+  function wrapPos(pos) { return ((pos - 1) % N + N) % N + 1; }
+  function typeAt(pos) { return WHEEL[wrapPos(pos) - 1]; }
+  function offset(pos, k) { return wrapPos(pos + k); }
+  function isElement(pos) { return wrapPos(pos) % 2 === 1; } // odd = element
+
+  // ---- State (immutable updates) ----
+  var state = {
+    phase: "intro",       // intro | sweep | deep | confirm | result
+    sweepIdx: 0,
+    deepIdx: 0,
+    confirmIdx: 0,
+    sweepPicks: {},       // sweepId -> chosen type
+    deepResp: {},         // itemId -> 1..5
+    confirmResp: {},      // itemId -> 1..5
+    candidates: [],       // live types after the sweep
+    deepQueue: [],        // [{id, type, channel, item}]
+    confirmQueue: []      // [{id, type, item}]
+  };
+
+  function setState(patch) {
+    state = Object.assign({}, state, patch);
+    render();
+  }
+
+  // ---- Building the adaptive queues ----
+  function roundRobin(groups) {
+    // groups: array of arrays. Interleave so consecutive items differ by group.
+    var out = [], i = 0, more = true;
+    while (more) {
+      more = false;
+      for (var g = 0; g < groups.length; g++) {
+        if (i < groups[g].length) { out.push(groups[g][i]); more = true; }
+      }
+      i++;
+    }
+    return out;
+  }
+
+  function candidatesFrom(picks) {
+    var tally = {};
+    WHEEL.forEach(function (t) { tally[t] = 0; });
+    Object.keys(picks).forEach(function (k) { tally[picks[k]] += 1; });
+    return WHEEL.slice()
+      .filter(function (t) { return tally[t] > 0; })
+      .sort(function (a, b) { return tally[b] - tally[a] || posOf(a) - posOf(b); })
+      .slice(0, CANDIDATE_COUNT);
+  }
+
+  function buildDeepQueue(candidates) {
+    function itemsFor(bank, channel) {
+      return candidates.map(function (t) {
+        return bank.filter(function (it) { return it.type === t; })
+          .map(function (it) {
+            return { id: it.id, type: t, channel: channel, item: it.item };
+          });
+      });
+    }
+    // Magnet block then Current block, each interleaved across candidates.
+    return roundRobin(itemsFor(DATA.magnet, "magnet"))
+      .concat(roundRobin(itemsFor(DATA.current, "current")));
+  }
+
+  // ---- Scoring ----
+  function likertTo100(values) {
+    if (!values.length) return null;
+    var mean = values.reduce(function (a, b) { return a + b; }, 0) / values.length;
+    return Math.round((mean - 1) / 4 * 100); // 1..5 -> 0..100
+  }
+
+  function channelScore(type, channel) {
+    var bank = channel === "magnet" ? DATA.magnet : DATA.current;
+    var vals = bank
+      .filter(function (it) { return it.type === type; })
+      .map(function (it) { return state.deepResp[it.id]; })
+      .filter(function (v) { return typeof v === "number"; });
+    var v = likertTo100(vals);
+    return v == null ? 0 : v;
+  }
+
+  function confirmationAgreement(type) {
+    // Reverse items: high agreement counts AGAINST the type. Returns 0..100
+    // or null if not asked. Used as a confidence signal, not to move the seat.
+    var vals = DATA.confirmation
+      .filter(function (it) { return it.type === type; })
+      .map(function (it) { return state.confirmResp[it.id]; })
+      .filter(function (v) { return typeof v === "number"; });
+    return likertTo100(vals);
+  }
+
+  function score() {
+    var rows = state.candidates.map(function (t) {
+      return {
+        type: t,
+        pos: posOf(t),
+        magnet: channelScore(t, "magnet"),
+        current: channelScore(t, "current"),
+        contradiction: confirmationAgreement(t) // may be null
+      };
+    });
+
+    // Peaks across the measured candidates, per channel, never summed.
+    var magnetPeak = rows.slice().sort(function (a, b) {
+      return b.magnet - a.magnet || posOf(a.type) - posOf(b.type);
+    })[0];
+    var currentPeak = rows.slice().sort(function (a, b) {
+      return b.current - a.current || posOf(a.type) - posOf(b.type);
+    })[0];
+
+    // Seat the Primary one step downstream of the Magnet (upstream) peak.
+    var U = magnetPeak.pos;
+    var D = currentPeak.pos;
+    var P = offset(U, 1);
+    var clean = offset(P, 1) === D && magnetPeak.type !== currentPeak.type;
+    var oppositeBoth = (isElement(P) !== isElement(U)) && (isElement(P) !== isElement(D));
+    var confidence = clean && oppositeBoth ? "clear" : "close";
+
+    // Average contradiction over measured candidates -> validity hint.
+    var contradictions = rows
+      .map(function (r) { return r.contradiction; })
+      .filter(function (v) { return typeof v === "number"; });
+    var validity = contradictions.length
+      ? Math.round(contradictions.reduce(function (a, b) { return a + b; }, 0) / contradictions.length)
+      : null;
+
+    return {
+      rows: rows,
+      primaryPos: P,
+      primary: typeAt(P),
+      magnetPeak: magnetPeak,
+      currentPeak: currentPeak,
+      confidence: confidence,
+      validity: validity
+    };
+  }
+
+  function constellation(P) {
+    return {
+      upstream: typeAt(offset(P, -1)),
+      downstream: typeAt(offset(P, 1)),
+      echo: typeAt(offset(P, 5)),
+      shadow: typeAt(offset(P, 4)),
+      eclipse: typeAt(offset(P, 6))
+    };
+  }
+
+  // ---- DOM helper ----
+  function el(tag, cls, html) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html != null) n.innerHTML = html;
+    return n;
+  }
+
+  // Small inward / outward flow arrows (channel cue, no model terms).
+  var ARROW_IN =
+    "<svg class='flow-arrow' viewBox='0 0 24 24' aria-hidden='true'>" +
+    "<path d='M12 3v12m0 0l-5-5m5 5l5-5' /><path d='M5 20h14' /></svg>";
+  var ARROW_OUT =
+    "<svg class='flow-arrow' viewBox='0 0 24 24' aria-hidden='true'>" +
+    "<path d='M12 21V9m0 0l-5 5m5-5l5 5' /><path d='M5 4h14' /></svg>";
+
+  // ---- Screens ----
+  function renderIntro() {
+    var s = el("section", "screen intro");
+    s.appendChild(el("h1", null, DATA.title));
+    s.appendChild(el("p", "tagline", "What&rsquo;s your vibe?"));
+    s.appendChild(el("p", "acronym",
+      "<span>V</span>itality &middot; <span>I</span>dentity &middot; " +
+      "<span>B</span>earings &middot; <span>E</span>nergy"));
+    s.appendChild(el("p", "lede",
+      "A quick read on how you&rsquo;re wired &mdash; what charges you up and how " +
+      "you show up. Take the VIBE test and get your VIBE type."));
+    var ul = el("ul");
+    ul.innerHTML =
+      "<li>A few quick scenarios first, then a short set of statements.</li>" +
+      "<li>For the statements, rate how much each one sounds like you.</li>" +
+      "<li>No right answers and no balanced result. Go with what&rsquo;s true, not what sounds best.</li>";
+    s.appendChild(ul);
+    var start = el("button", "btn", "Take the VIBE test");
+    start.addEventListener("click", function () { setState({ phase: "sweep", sweepIdx: 0 }); });
+    s.appendChild(start);
+    return s;
+  }
+
+  function progress(label, current, total) {
+    var prog = el("div", "progress");
+    var bar = el("div", "progress-bar");
+    var fill = el("div", "progress-fill");
+    fill.style.width = (total ? (current / total) * 100 : 0) + "%";
+    bar.appendChild(fill);
+    prog.appendChild(bar);
+    var meta = el("div", "progress-meta");
+    meta.appendChild(el("span", "arm-tag", label));
+    meta.appendChild(el("span", null, current + " of " + total));
+    prog.appendChild(meta);
+    return prog;
+  }
+
+  function renderSweep() {
+    var items = DATA.sweep;
+    var q = items[state.sweepIdx];
+    var s = el("section", "screen question");
+    s.appendChild(progress("A few quick scenarios", state.sweepIdx + 1, items.length));
+    s.appendChild(el("h2", null, q.question));
+
+    var opts = el("div", "options");
+    q.options.forEach(function (opt) {
+      var b = el("button", "option");
+      b.appendChild(el("span", "opt-text", opt.text));
+      b.addEventListener("click", function () {
+        var picks = Object.assign({}, state.sweepPicks);
+        picks[q.id] = opt.type;
+        if (state.sweepIdx < items.length - 1) {
+          setState({ sweepPicks: picks, sweepIdx: state.sweepIdx + 1 });
+        } else {
+          var cand = candidatesFrom(picks);
+          setState({
+            sweepPicks: picks,
+            candidates: cand,
+            deepQueue: buildDeepQueue(cand),
+            phase: "deep",
+            deepIdx: 0
+          });
+        }
+      });
+      opts.appendChild(b);
+    });
+    s.appendChild(opts);
+    if (state.sweepIdx > 0) {
+      var nav = el("div", "nav");
+      var back = el("button", "btn secondary", "Back");
+      back.addEventListener("click", function () { setState({ sweepIdx: state.sweepIdx - 1 }); });
+      nav.appendChild(back);
+      s.appendChild(nav);
+    }
+    return s;
+  }
+
+  function likertRow(itemId, store, onNext) {
+    var current = state[store][itemId];
+    var box = el("div", "likert");
+    var ends = el("div", "likert-ends");
+    ends.appendChild(el("span", null, "Not me"));
+    ends.appendChild(el("span", null, "Exactly me"));
+    box.appendChild(ends);
+    var scale = el("div", "likert-scale");
+    [1, 2, 3, 4, 5].forEach(function (v) {
+      var b = el("button", "dot" + (current === v ? " selected" : ""), String(v));
+      b.addEventListener("click", function () {
+        var resp = Object.assign({}, state[store]);
+        resp[itemId] = v;
+        var patch = {};
+        patch[store] = resp;
+        state = Object.assign({}, state, patch);
+        render();
+        window.setTimeout(onNext, 160);
+      });
+      scale.appendChild(b);
+    });
+    box.appendChild(scale);
+    return box;
+  }
+
+  function renderDeep() {
+    var queue = state.deepQueue;
+    var item = queue[state.deepIdx];
+    var s = el("section", "screen question");
+    s.appendChild(progress("How much is this you?", state.deepIdx + 1, queue.length));
+
+    var cue = el("div", "channel-cue " + item.channel);
+    cue.innerHTML = (item.channel === "magnet" ? ARROW_IN : ARROW_OUT) +
+      "<span>" + (item.channel === "magnet"
+        ? "What flows to you"
+        : "How your energy flows out") + "</span>";
+    s.appendChild(cue);
+
+    s.appendChild(el("h2", "statement", "&ldquo;" + item.item + "&rdquo;"));
+
+    s.appendChild(likertRow(item.id, "deepResp", function () {
+      if (state.deepIdx < queue.length - 1) {
+        setState({ deepIdx: state.deepIdx + 1 });
+      } else {
+        var ranked = state.candidates.slice().sort(function (a, b) {
+          return Math.max(channelScore(b, "magnet"), channelScore(b, "current")) -
+                 Math.max(channelScore(a, "magnet"), channelScore(a, "current"));
+        }).slice(0, CONFIRM_COUNT);
+        var groups = ranked.map(function (t) {
+          return DATA.confirmation.filter(function (it) { return it.type === t; });
+        });
+        setState({ confirmQueue: roundRobin(groups), phase: "confirm", confirmIdx: 0 });
+      }
+    }));
+
+    var nav = el("div", "nav");
+    var back = el("button", "btn secondary", "Back");
+    back.disabled = state.deepIdx === 0;
+    back.addEventListener("click", function () {
+      if (state.deepIdx > 0) setState({ deepIdx: state.deepIdx - 1 });
+    });
+    nav.appendChild(back);
+    s.appendChild(nav);
+    return s;
+  }
+
+  function renderConfirm() {
+    var queue = state.confirmQueue;
+    if (!queue.length) { setState({ phase: "result" }); return el("section"); }
+    var item = queue[state.confirmIdx];
+    var s = el("section", "screen question");
+    s.appendChild(progress("One last check", state.confirmIdx + 1, queue.length));
+    s.appendChild(el("h2", "statement", "&ldquo;" + item.item + "&rdquo;"));
+    s.appendChild(likertRow(item.id, "confirmResp", function () {
+      if (state.confirmIdx < queue.length - 1) setState({ confirmIdx: state.confirmIdx + 1 });
+      else setState({ phase: "result" });
+    }));
+    return s;
+  }
+
+  function bar(label, sub, value) {
+    var row = el("div", "channel-read");
+    var head = el("div", "channel-head");
+    head.appendChild(el("span", "channel-label", label));
+    head.appendChild(el("span", "channel-sub", sub));
+    row.appendChild(head);
+    var track = el("div", "score-bar");
+    var span = document.createElement("span");
+    span.style.width = (value == null ? 0 : value) + "%";
+    track.appendChild(span);
+    row.appendChild(track);
+    return row;
+  }
+
+  function renderResult() {
+    var r = score();
+    var P = r.primaryPos;
+    var c = constellation(P);
+
+    var s = el("section", "screen result");
+    s.appendChild(el("p", "eyebrow", "Your VIBE type"));
+    s.appendChild(el("h1", null, r.primary));
+
+    if (r.confidence === "close") {
+      s.appendChild(el("p", "confidence",
+        "This one came out close. Treat it as a strong indication rather than the final word."));
+    }
+    if (r.validity != null && r.validity >= 60) {
+      s.appendChild(el("p", "confidence",
+        "Some answers leaned toward how you&rsquo;d like to be. Worth a second sitting another day."));
+    }
+
+    // The two channels, never summed, as two separate reads.
+    s.appendChild(el("h3", null, "Your two channels"));
+    var reads = el("div", "reads");
+    reads.appendChild(bar("What flows to you", "charges you up &middot; " + r.magnetPeak.type, r.magnetPeak.magnet));
+    reads.appendChild(bar("How your energy flows out", "how you show up &middot; " + r.currentPeak.type, r.currentPeak.current));
+    s.appendChild(reads);
+
+    // Constellation, fixed by position around the Primary.
+    s.appendChild(el("h3", null, "Your constellation"));
+    var con = el("div", "constellation");
+    [
+      ["Flows to you", c.upstream, "what charges and feeds you"],
+      ["Flows out from you", c.downstream, "where your energy goes"],
+      ["Echo", c.echo, "comes back round to you"],
+      ["Shadow", c.shadow, "the one you tend to overpower"],
+      ["Eclipse", c.eclipse, "the one that tends to dim you"]
+    ].forEach(function (row) {
+      var node = el("div", "con-row");
+      var left = el("div", "con-rel");
+      left.appendChild(el("span", "con-name", row[1]));
+      left.appendChild(el("span", "con-sub", row[2]));
+      node.appendChild(left);
+      node.appendChild(el("span", "con-tag", row[0]));
+      con.appendChild(node);
+    });
+    s.appendChild(con);
+
+    // Optional secondary view: the channels for the types we measured.
+    var toggle = el("button", "btn secondary full-toggle", "See the full read");
+    var full = el("div", "full-read");
+    full.style.display = "none";
+    var table = el("table", "scores");
+    table.innerHTML =
+      "<thead><tr><th>VIBE type</th><th>What flows in</th><th>What flows out</th></tr></thead>";
+    var tbody = el("tbody");
+    r.rows.slice().sort(function (a, b) {
+      return Math.max(b.magnet, b.current) - Math.max(a.magnet, a.current);
+    }).forEach(function (row) {
+      var tr = el("tr", row.type === r.primary ? "is-primary" : null);
+      tr.innerHTML =
+        "<td>" + row.type + "</td><td>" + row.magnet + "</td><td>" + row.current + "</td>";
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    full.appendChild(table);
+    full.appendChild(el("p", "note",
+      "Only your live types were measured in full this sitting, so the others are not shown."));
+    toggle.addEventListener("click", function () {
+      var open = full.style.display !== "none";
+      full.style.display = open ? "none" : "block";
+      toggle.textContent = open ? "See the full read" : "Hide the full read";
+    });
+    s.appendChild(toggle);
+    s.appendChild(full);
+
+    s.appendChild(el("p", "result-tagline", "That&rsquo;s your vibe."));
+    var actions = el("div", "footer-actions");
+    var again = el("button", "btn", "Retake the VIBE test");
+    again.addEventListener("click", function () {
+      setState({
+        phase: "intro", sweepIdx: 0, deepIdx: 0, confirmIdx: 0,
+        sweepPicks: {}, deepResp: {}, confirmResp: {},
+        candidates: [], deepQueue: [], confirmQueue: []
+      });
+    });
+    actions.appendChild(again);
+    s.appendChild(actions);
+    return s;
+  }
+
+  function render() {
+    app.innerHTML = "";
+    var node;
+    if (state.phase === "intro") node = renderIntro();
+    else if (state.phase === "sweep") node = renderSweep();
+    else if (state.phase === "deep") node = renderDeep();
+    else if (state.phase === "confirm") node = renderConfirm();
+    else node = renderResult();
+    app.appendChild(node);
+    window.scrollTo(0, 0);
+  }
+
+  render();
+})();
+
+</script>
+</body>
+</html>
