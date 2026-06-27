@@ -230,6 +230,12 @@ html, body {
   color: var(--muted);
   margin: 0 0 14px;
 }
+.lean {
+  font-size: 1.1rem;
+  line-height: 1.5;
+  color: var(--text);
+  margin: 6px 0 8px;
+}
 
 /* Two channels, two separate bars (never summed) */
 .reads { display: grid; gap: 16px; }
@@ -1289,61 +1295,72 @@ window.QUIZ_DATA = {
 
 </script>
   <script>
-// VIBE test — adaptive flow, scoring engine, and constellation read.
+// VIBE test — engine v3. Adaptive flow, non-linear scoring, flow lean.
 // Reads window.QUIZ_DATA (assets/quiz-data.js, generated from the workbook).
 //
-// Engine rules (from the build brief + corrections):
-//  - Two channels per type: Magnet (charge in) and Current (charge out).
-//    Each normalised 0-100 INDEPENDENTLY. Never summed. Shown as two bars.
-//  - Primary is SEATED BETWEEN the peaks, not the loudest channel:
-//    the Magnet peak is the upstream neighbour (P-1), the Current peak is the
-//    downstream neighbour (P+1), so the Primary is P = (Magnet peak pos) + 1.
-//    Clean read: the Current peak then lands on P+1. If it does not, the read
-//    is flagged "close" (low confidence). No tie-break — seating is unique.
-//  - Constellation by position off the Primary, all ten settled:
-//    upstream P-1, downstream P+1, Echo P+5, Shadow P+4, Eclipse P+6.
+// Founding law: energy is the imbalance. Never force scores even, never sum the
+// two channels, never average to a midpoint. Measure the lean and read the lean.
+//
+// Mapping to the build brief:
+//  - 1..5 answers carry NON-LINEAR weights {1:0,2:1,3:3,4:6,5:10} (s2).
+//  - score(B,C) = sum(weights) / (items * 10) * 100, per channel (s3).
+//  - Primary = the top MEASURED single channel score; tie-break by Sweep tally.
+//    The old "seat between the peaks" rule is gone (s4).
+//  - Shoulders fixed by position: Upstream U = P-1 (in), Downstream D = P+1 (out).
+//    Both are always measured in the deep round (s5, s7).
+//  - flow_lean = score(U,in) - score(D,out) (s6).
+//  - Constellation by position: Echo P+5, Shadow P+4, Eclipse P+6 (s10).
+//  - Channels box and constellation MUST show the same U/D profiles (s11).
+//  - DATA.magnet are the "in" items, DATA.current are the "out" items.
 (function () {
   "use strict";
 
   var DATA = window.QUIZ_DATA;
   var app = document.getElementById("app");
-  var WHEEL = DATA.wheel;                 // index 0 = position 1
-  var N = WHEEL.length;                    // 10
+  var WHEEL = DATA.wheel;
+  var N = WHEEL.length;
 
-  // How many live types the Sweep promotes to the deep round.
-  var CANDIDATE_COUNT = 3;
-  // How many top types get the Confirmation cross-check.
-  var CONFIRM_COUNT = 2;
+  // Non-linear answer weights (s2): the curve, not a linear multiplier, makes
+  // confident extremes carry far more than the soft middle.
+  var WEIGHTS = { 1: 0, 2: 1, 3: 3, 4: 6, 5: 10 };
+  var MAX_WEIGHT = 10;
 
-  // ---- Wheel helpers (positions are 1..N) ----
+  // Adaptive-flow tuning (s7). The deep round measures the candidate plus its
+  // shoulders plus a guard either side, so the seat can shift outward.
+  var GUARD_RADIUS = 2;          // window = candidate +/- 2 (five bearings)
+  var DEEP_PER_CHANNEL = 3;      // items per (bearing, channel) in the deep round
+  var CONFIRM_PER_TYPE = 2;      // confirmation items per checked type
+  var LEAN_BAND = 10;            // |flow_lean| below this reads as two-way
+  var CLOSE_MARGIN = 8;          // top-two single scores within this => low conf
+  var MAX_RESEAT = 4;            // safety bound on re-measuring loops
+
+  // ---- Wheel helpers (positions 1..N) ----
   function posOf(type) { return WHEEL.indexOf(type) + 1; }
-  function wrapPos(pos) { return ((pos - 1) % N + N) % N + 1; }
-  function typeAt(pos) { return WHEEL[wrapPos(pos) - 1]; }
-  function offset(pos, k) { return wrapPos(pos + k); }
-  function isElement(pos) { return wrapPos(pos) % 2 === 1; } // odd = element
+  function wrapPos(p) { return ((p - 1) % N + N) % N + 1; }
+  function typeAt(p) { return WHEEL[wrapPos(p) - 1]; }
+  function offset(p, k) { return wrapPos(p + k); }
+
+  function bankFor(channel) { return channel === "in" ? DATA.magnet : DATA.current; }
 
   // ---- State (immutable updates) ----
   var state = {
-    phase: "intro",       // intro | sweep | deep | confirm | result
+    phase: "intro",        // intro | sweep | deep | confirm | result
     sweepIdx: 0,
     deepIdx: 0,
     confirmIdx: 0,
-    sweepPicks: {},       // sweepId -> chosen type
-    deepResp: {},         // itemId -> 1..5
-    confirmResp: {},      // itemId -> 1..5
-    candidates: [],       // live types after the sweep
-    deepQueue: [],        // [{id, type, channel, item}]
-    confirmQueue: []      // [{id, type, item}]
+    sweepPicks: {},        // sweepId -> type
+    deepResp: {},          // itemId -> 1..5
+    confirmResp: {},       // itemId -> 1..5
+    candidate: null,       // leading Sweep type
+    deepQueue: [],         // asked deep items [{id,type,channel,item}]
+    confirmQueue: [],      // asked confirmation items [{id,type,item}]
+    reseats: 0
   };
 
-  function setState(patch) {
-    state = Object.assign({}, state, patch);
-    render();
-  }
+  function setState(patch) { state = Object.assign({}, state, patch); render(); }
 
-  // ---- Building the adaptive queues ----
+  // ---- Queue building ----
   function roundRobin(groups) {
-    // groups: array of arrays. Interleave so consecutive items differ by group.
     var out = [], i = 0, more = true;
     while (more) {
       more = false;
@@ -1355,111 +1372,119 @@ window.QUIZ_DATA = {
     return out;
   }
 
-  function candidatesFrom(picks) {
+  function itemsFor(type, channel) {
+    return bankFor(channel)
+      .filter(function (it) { return it.type === type; })
+      .slice(0, DEEP_PER_CHANNEL)
+      .map(function (it) { return { id: it.id, type: type, channel: channel, item: it.item }; });
+  }
+
+  function windowTypes(centerPos, radius) {
+    var seen = {}, out = [];
+    for (var k = -radius; k <= radius; k++) {
+      var t = typeAt(centerPos + k);
+      if (!seen[t]) { seen[t] = 1; out.push(t); }
+    }
+    return out;
+  }
+
+  function deepItemsForTypes(types) {
+    var groups = [];
+    types.forEach(function (t) {
+      groups.push(itemsFor(t, "in"));
+      groups.push(itemsFor(t, "out"));
+    });
+    return roundRobin(groups);
+  }
+
+  function measuredTypes() {
+    var seen = {}, out = [];
+    state.deepQueue.forEach(function (it) { if (!seen[it.type]) { seen[it.type] = 1; out.push(it.type); } });
+    return out;
+  }
+
+  function sweepTally(picks) {
     var tally = {};
     WHEEL.forEach(function (t) { tally[t] = 0; });
     Object.keys(picks).forEach(function (k) { tally[picks[k]] += 1; });
-    return WHEEL.slice()
-      .filter(function (t) { return tally[t] > 0; })
-      .sort(function (a, b) { return tally[b] - tally[a] || posOf(a) - posOf(b); })
-      .slice(0, CANDIDATE_COUNT);
+    return tally;
   }
 
-  function buildDeepQueue(candidates) {
-    function itemsFor(bank, channel) {
-      return candidates.map(function (t) {
-        return bank.filter(function (it) { return it.type === t; })
-          .map(function (it) {
-            return { id: it.id, type: t, channel: channel, item: it.item };
-          });
-      });
-    }
-    // Magnet block then Current block, each interleaved across candidates.
-    return roundRobin(itemsFor(DATA.magnet, "magnet"))
-      .concat(roundRobin(itemsFor(DATA.current, "current")));
-  }
-
-  // ---- Scoring ----
-  function likertTo100(values) {
-    if (!values.length) return null;
-    var mean = values.reduce(function (a, b) { return a + b; }, 0) / values.length;
-    return Math.round((mean - 1) / 4 * 100); // 1..5 -> 0..100
-  }
-
+  // ---- Scoring (s2, s3) ----
   function channelScore(type, channel) {
-    var bank = channel === "magnet" ? DATA.magnet : DATA.current;
-    var vals = bank
-      .filter(function (it) { return it.type === type; })
-      .map(function (it) { return state.deepResp[it.id]; })
-      .filter(function (v) { return typeof v === "number"; });
-    var v = likertTo100(vals);
-    return v == null ? 0 : v;
-  }
-
-  function confirmationAgreement(type) {
-    // Reverse items: high agreement counts AGAINST the type. Returns 0..100
-    // or null if not asked. Used as a confidence signal, not to move the seat.
-    var vals = DATA.confirmation
-      .filter(function (it) { return it.type === type; })
-      .map(function (it) { return state.confirmResp[it.id]; })
-      .filter(function (v) { return typeof v === "number"; });
-    return likertTo100(vals);
-  }
-
-  function score() {
-    var rows = state.candidates.map(function (t) {
-      return {
-        type: t,
-        pos: posOf(t),
-        magnet: channelScore(t, "magnet"),
-        current: channelScore(t, "current"),
-        contradiction: confirmationAgreement(t) // may be null
-      };
+    var asked = state.deepQueue.filter(function (it) {
+      return it.type === type && it.channel === channel;
     });
-
-    // Peaks across the measured candidates, per channel, never summed.
-    var magnetPeak = rows.slice().sort(function (a, b) {
-      return b.magnet - a.magnet || posOf(a.type) - posOf(b.type);
-    })[0];
-    var currentPeak = rows.slice().sort(function (a, b) {
-      return b.current - a.current || posOf(a.type) - posOf(b.type);
-    })[0];
-
-    // Seat the Primary one step downstream of the Magnet (upstream) peak.
-    var U = magnetPeak.pos;
-    var D = currentPeak.pos;
-    var P = offset(U, 1);
-    var clean = offset(P, 1) === D && magnetPeak.type !== currentPeak.type;
-    var oppositeBoth = (isElement(P) !== isElement(U)) && (isElement(P) !== isElement(D));
-    var confidence = clean && oppositeBoth ? "clear" : "close";
-
-    // Average contradiction over measured candidates -> validity hint.
-    var contradictions = rows
-      .map(function (r) { return r.contradiction; })
-      .filter(function (v) { return typeof v === "number"; });
-    var validity = contradictions.length
-      ? Math.round(contradictions.reduce(function (a, b) { return a + b; }, 0) / contradictions.length)
-      : null;
-
-    return {
-      rows: rows,
-      primaryPos: P,
-      primary: typeAt(P),
-      magnetPeak: magnetPeak,
-      currentPeak: currentPeak,
-      confidence: confidence,
-      validity: validity
-    };
+    if (!asked.length) return null;
+    var raw = 0, count = 0;
+    asked.forEach(function (it) {
+      var a = state.deepResp[it.id];
+      if (typeof a === "number") { raw += WEIGHTS[a]; count += 1; }
+    });
+    if (!count) return null;
+    return Math.round(raw / (count * MAX_WEIGHT) * 100); // 0..100
   }
 
-  function constellation(P) {
-    return {
-      upstream: typeAt(offset(P, -1)),
-      downstream: typeAt(offset(P, 1)),
-      echo: typeAt(offset(P, 5)),
-      shadow: typeAt(offset(P, 4)),
-      eclipse: typeAt(offset(P, 6))
-    };
+  // Primary = top measured single channel score; tie-break by Sweep tally (s4).
+  function computePrimary() {
+    var tally = sweepTally(state.sweepPicks);
+    var rows = measuredTypes().map(function (t) {
+      var si = channelScore(t, "in") || 0;
+      var so = channelScore(t, "out") || 0;
+      return { type: t, pos: posOf(t), in: si, out: so, single: Math.max(si, so), tally: tally[t] || 0 };
+    });
+    rows.sort(function (a, b) {
+      return b.single - a.single || b.tally - a.tally || a.pos - b.pos;
+    });
+    return rows;
+  }
+
+  // ---- Phase transitions ----
+  function finishSweep(picks) {
+    var tally = sweepTally(picks);
+    var candidate = WHEEL.slice().sort(function (a, b) {
+      return (tally[b] - tally[a]) || posOf(a) - posOf(b);
+    })[0];
+    var types = windowTypes(posOf(candidate), GUARD_RADIUS);
+    setState({
+      sweepPicks: picks,
+      candidate: candidate,
+      deepQueue: deepItemsForTypes(types),
+      phase: "deep",
+      deepIdx: 0,
+      reseats: 0
+    });
+  }
+
+  function finishDeep() {
+    // Confirm the seat: the Primary and BOTH shoulders must be measured (s7.4).
+    var rows = computePrimary();
+    var P = rows[0].pos;
+    var shoulders = [typeAt(offset(P, -1)), typeAt(offset(P, 1))];
+    var have = {};
+    measuredTypes().forEach(function (t) { have[t] = 1; });
+    var missing = shoulders.filter(function (t) { return !have[t]; });
+
+    if (missing.length && state.reseats < MAX_RESEAT) {
+      var extra = deepItemsForTypes(missing);
+      setState({
+        deepQueue: state.deepQueue.concat(extra),
+        deepIdx: state.deepIdx + 1,
+        reseats: state.reseats + 1
+      });
+      return;
+    }
+    // Build confirmation over Primary + shoulders.
+    var checkTypes = [rows[0].type].concat(shoulders).filter(function (t, i, a) {
+      return a.indexOf(t) === i;
+    });
+    var groups = checkTypes.map(function (t) {
+      return DATA.confirmation
+        .filter(function (it) { return it.type === t; })
+        .slice(0, CONFIRM_PER_TYPE)
+        .map(function (it) { return { id: it.id, type: t, item: it.item }; });
+    });
+    setState({ confirmQueue: roundRobin(groups), phase: "confirm", confirmIdx: 0 });
   }
 
   // ---- DOM helper ----
@@ -1470,7 +1495,6 @@ window.QUIZ_DATA = {
     return n;
   }
 
-  // Small inward / outward flow arrows (channel cue, no model terms).
   var ARROW_IN =
     "<svg class='flow-arrow' viewBox='0 0 24 24' aria-hidden='true'>" +
     "<path d='M12 3v12m0 0l-5-5m5 5l5-5' /><path d='M5 20h14' /></svg>";
@@ -1487,12 +1511,12 @@ window.QUIZ_DATA = {
       "<span>V</span>itality &middot; <span>I</span>dentity &middot; " +
       "<span>B</span>earings &middot; <span>E</span>nergy"));
     s.appendChild(el("p", "lede",
-      "A quick read on how you&rsquo;re wired &mdash; what charges you up and how " +
-      "you show up. Take the VIBE test and get your VIBE type."));
+      "A quick read on how you&rsquo;re wired, what charges you up and how you " +
+      "show up. Take the VIBE test and get your VIBE type."));
     var ul = el("ul");
     ul.innerHTML =
       "<li>A few quick scenarios first, then a short set of statements.</li>" +
-      "<li>For the statements, rate how much each one sounds like you.</li>" +
+      "<li>Rate each statement from not me at all to exactly me.</li>" +
       "<li>No right answers and no balanced result. Go with what&rsquo;s true, not what sounds best.</li>";
     s.appendChild(ul);
     var start = el("button", "btn", "Take the VIBE test");
@@ -1529,18 +1553,8 @@ window.QUIZ_DATA = {
       b.addEventListener("click", function () {
         var picks = Object.assign({}, state.sweepPicks);
         picks[q.id] = opt.type;
-        if (state.sweepIdx < items.length - 1) {
-          setState({ sweepPicks: picks, sweepIdx: state.sweepIdx + 1 });
-        } else {
-          var cand = candidatesFrom(picks);
-          setState({
-            sweepPicks: picks,
-            candidates: cand,
-            deepQueue: buildDeepQueue(cand),
-            phase: "deep",
-            deepIdx: 0
-          });
-        }
+        if (state.sweepIdx < items.length - 1) setState({ sweepPicks: picks, sweepIdx: state.sweepIdx + 1 });
+        else finishSweep(picks);
       });
       opts.appendChild(b);
     });
@@ -1555,11 +1569,13 @@ window.QUIZ_DATA = {
     return s;
   }
 
+  // Anchored 1..5 scale with a real middle (s1).
   function likertRow(itemId, store, onNext) {
     var current = state[store][itemId];
     var box = el("div", "likert");
     var ends = el("div", "likert-ends");
-    ends.appendChild(el("span", null, "Not me"));
+    ends.appendChild(el("span", null, "Not me at all"));
+    ends.appendChild(el("span", null, "Sometimes"));
     ends.appendChild(el("span", null, "Exactly me"));
     box.appendChild(ends);
     var scale = el("div", "likert-scale");
@@ -1568,11 +1584,10 @@ window.QUIZ_DATA = {
       b.addEventListener("click", function () {
         var resp = Object.assign({}, state[store]);
         resp[itemId] = v;
-        var patch = {};
-        patch[store] = resp;
+        var patch = {}; patch[store] = resp;
         state = Object.assign({}, state, patch);
         render();
-        window.setTimeout(onNext, 160);
+        window.setTimeout(onNext, 150);
       });
       scale.appendChild(b);
     });
@@ -1587,35 +1602,20 @@ window.QUIZ_DATA = {
     s.appendChild(progress("How much is this you?", state.deepIdx + 1, queue.length));
 
     var cue = el("div", "channel-cue " + item.channel);
-    cue.innerHTML = (item.channel === "magnet" ? ARROW_IN : ARROW_OUT) +
-      "<span>" + (item.channel === "magnet"
-        ? "What flows to you"
-        : "How your energy flows out") + "</span>";
+    cue.innerHTML = (item.channel === "in" ? ARROW_IN : ARROW_OUT) +
+      "<span>" + (item.channel === "in" ? "What flows to you" : "How your energy flows out") + "</span>";
     s.appendChild(cue);
 
     s.appendChild(el("h2", "statement", "&ldquo;" + item.item + "&rdquo;"));
-
     s.appendChild(likertRow(item.id, "deepResp", function () {
-      if (state.deepIdx < queue.length - 1) {
-        setState({ deepIdx: state.deepIdx + 1 });
-      } else {
-        var ranked = state.candidates.slice().sort(function (a, b) {
-          return Math.max(channelScore(b, "magnet"), channelScore(b, "current")) -
-                 Math.max(channelScore(a, "magnet"), channelScore(a, "current"));
-        }).slice(0, CONFIRM_COUNT);
-        var groups = ranked.map(function (t) {
-          return DATA.confirmation.filter(function (it) { return it.type === t; });
-        });
-        setState({ confirmQueue: roundRobin(groups), phase: "confirm", confirmIdx: 0 });
-      }
+      if (state.deepIdx < state.deepQueue.length - 1) setState({ deepIdx: state.deepIdx + 1 });
+      else finishDeep();
     }));
 
     var nav = el("div", "nav");
     var back = el("button", "btn secondary", "Back");
     back.disabled = state.deepIdx === 0;
-    back.addEventListener("click", function () {
-      if (state.deepIdx > 0) setState({ deepIdx: state.deepIdx - 1 });
-    });
+    back.addEventListener("click", function () { if (state.deepIdx > 0) setState({ deepIdx: state.deepIdx - 1 }); });
     nav.appendChild(back);
     s.appendChild(nav);
     return s;
@@ -1635,6 +1635,18 @@ window.QUIZ_DATA = {
     return s;
   }
 
+  // Confirmation items are reverse-scored: a high answer contradicts the type.
+  function confirmContradiction(type) {
+    var asked = state.confirmQueue.filter(function (it) { return it.type === type; });
+    if (!asked.length) return null;
+    var sum = 0, count = 0;
+    asked.forEach(function (it) {
+      var a = state.confirmResp[it.id];
+      if (typeof a === "number") { sum += a; count += 1; }
+    });
+    return count ? sum / count : null; // mean 1..5; high => contradicts
+  }
+
   function bar(label, sub, value) {
     var row = el("div", "channel-read");
     var head = el("div", "channel-head");
@@ -1649,71 +1661,92 @@ window.QUIZ_DATA = {
     return row;
   }
 
+  function leanSentence(inS, outS) {
+    var lean = inS - outS;
+    if (lean > LEAN_BAND)
+      return "You tend to lean toward drawing in. You run more on what charges you than on what you put out.";
+    if (lean < -LEAN_BAND)
+      return "You tend to lean toward pushing out. You run more on what you express than on what you take in.";
+    if (inS >= 55 && outS >= 55)
+      return "You run strongly both ways, drawing in and pushing out in good measure.";
+    return "Your two channels sit close together, with no strong lean either way.";
+  }
+
   function renderResult() {
-    var r = score();
-    var P = r.primaryPos;
-    var c = constellation(P);
+    var rows = computePrimary();
+    var primary = rows[0];
+    var P = primary.pos;
+    var upType = typeAt(offset(P, -1));
+    var downType = typeAt(offset(P, 1));
+    var inS = channelScore(upType, "in") || 0;
+    var outS = channelScore(downType, "out") || 0;
+
+    // Confidence (s12).
+    var reasons = [];
+    if (state.candidate && state.candidate !== primary.type) reasons.push("seat-shift");
+    [primary.type, upType, downType].forEach(function (t) {
+      var c = confirmContradiction(t);
+      if (c != null && c >= 3.5 && reasons.indexOf("confirm") < 0) reasons.push("confirm");
+    });
+    if (rows.length > 1 && (rows[0].single - rows[1].single) < CLOSE_MARGIN) reasons.push("close-scores");
+    var lowConf = reasons.length > 0;
 
     var s = el("section", "screen result");
     s.appendChild(el("p", "eyebrow", "Your VIBE type"));
-    s.appendChild(el("h1", null, r.primary));
+    s.appendChild(el("h1", null, primary.type));
 
-    if (r.confidence === "close") {
+    if (lowConf) {
       s.appendChild(el("p", "confidence",
-        "This one came out close. Treat it as a strong indication rather than the final word."));
-    }
-    if (r.validity != null && r.validity >= 60) {
-      s.appendChild(el("p", "confidence",
-        "Some answers leaned toward how you&rsquo;d like to be. Worth a second sitting another day."));
+        "Strong indication, not the final word. A couple of answers sat close, so it&rsquo;s worth a second sitting another day."));
     }
 
-    // The two channels, never summed, as two separate reads.
+    // Flow lean — the core read (s6). A tendency, never a verdict.
+    s.appendChild(el("div", "lean", leanSentence(inS, outS)));
+
+    // Two channels, two separate bars, U for in and D for out (s5, s11).
     s.appendChild(el("h3", null, "Your two channels"));
     var reads = el("div", "reads");
-    reads.appendChild(bar("What flows to you", "charges you up &middot; " + r.magnetPeak.type, r.magnetPeak.magnet));
-    reads.appendChild(bar("How your energy flows out", "how you show up &middot; " + r.currentPeak.type, r.currentPeak.current));
+    reads.appendChild(bar("What flows to you", "charges you up &middot; " + upType, inS));
+    reads.appendChild(bar("How your energy flows out", "how you show up &middot; " + downType, outS));
     s.appendChild(reads);
 
-    // Constellation, fixed by position around the Primary.
+    // Constellation by position — must show the SAME U/D as the channels (s11).
     s.appendChild(el("h3", null, "Your constellation"));
     var con = el("div", "constellation");
     [
-      ["Flows to you", c.upstream, "what charges and feeds you"],
-      ["Flows out from you", c.downstream, "where your energy goes"],
-      ["Echo", c.echo, "comes back round to you"],
-      ["Shadow", c.shadow, "the one you tend to overpower"],
-      ["Eclipse", c.eclipse, "the one that tends to dim you"]
-    ].forEach(function (row) {
+      ["Flows to you", upType, "what charges and feeds you"],
+      ["Flows out from you", downType, "where your energy goes"],
+      ["Echo", typeAt(offset(P, 5)), "comes back round to you"],
+      ["Shadow", typeAt(offset(P, 4)), "the one you tend to overpower"],
+      ["Eclipse", typeAt(offset(P, 6)), "the one that tends to dim you"]
+    ].forEach(function (r) {
       var node = el("div", "con-row");
       var left = el("div", "con-rel");
-      left.appendChild(el("span", "con-name", row[1]));
-      left.appendChild(el("span", "con-sub", row[2]));
+      left.appendChild(el("span", "con-name", r[1]));
+      left.appendChild(el("span", "con-sub", r[2]));
       node.appendChild(left);
-      node.appendChild(el("span", "con-tag", row[0]));
+      node.appendChild(el("span", "con-tag", r[0]));
       con.appendChild(node);
     });
     s.appendChild(con);
 
-    // Optional secondary view: the channels for the types we measured.
+    // Optional detail: every measured type, both channels.
     var toggle = el("button", "btn secondary full-toggle", "See the full read");
     var full = el("div", "full-read");
     full.style.display = "none";
     var table = el("table", "scores");
     table.innerHTML =
-      "<thead><tr><th>VIBE type</th><th>What flows in</th><th>What flows out</th></tr></thead>";
+      "<thead><tr><th>VIBE type</th><th>Flows in</th><th>Flows out</th></tr></thead>";
     var tbody = el("tbody");
-    r.rows.slice().sort(function (a, b) {
-      return Math.max(b.magnet, b.current) - Math.max(a.magnet, a.current);
-    }).forEach(function (row) {
-      var tr = el("tr", row.type === r.primary ? "is-primary" : null);
-      tr.innerHTML =
-        "<td>" + row.type + "</td><td>" + row.magnet + "</td><td>" + row.current + "</td>";
+    rows.forEach(function (row) {
+      var tr = el("tr", row.type === primary.type ? "is-primary" : null);
+      tr.innerHTML = "<td>" + row.type + "</td><td>" + row.in + "</td><td>" + row.out + "</td>";
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
     full.appendChild(table);
     full.appendChild(el("p", "note",
-      "Only your live types were measured in full this sitting, so the others are not shown."));
+      "Only your live types were measured this sitting, so the others are not shown."));
     toggle.addEventListener("click", function () {
       var open = full.style.display !== "none";
       full.style.display = open ? "none" : "block";
@@ -1729,7 +1762,7 @@ window.QUIZ_DATA = {
       setState({
         phase: "intro", sweepIdx: 0, deepIdx: 0, confirmIdx: 0,
         sweepPicks: {}, deepResp: {}, confirmResp: {},
-        candidates: [], deepQueue: [], confirmQueue: []
+        candidate: null, deepQueue: [], confirmQueue: [], reseats: 0
       });
     });
     actions.appendChild(again);
